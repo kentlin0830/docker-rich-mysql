@@ -1,0 +1,49 @@
+#!/bin/bash
+set -e
+
+chown -R mysql:mysql /var/lib/mysql
+mysql_install_db --user mysql > /dev/null
+
+ROOT_PASSWORD=${ROOT_PASSWORD:-"pwd01"}
+MY_USER=${MY_USER:-"ubuntu"}
+MY_PASSWORD=${MY_PASSWORD:-"pwd01"}
+MYSQL_DATABASE=${MYSQL_DATABASE:-"default_db"}
+
+
+# Setup MySQL
+tfile=`mktemp`
+if [[ ! -f "$tfile" ]]; then
+    return 1
+fi
+
+cat << EOF > $tfile
+USE mysql;
+FLUSH PRIVILEGES;
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+UPDATE user SET password=PASSWORD("$ROOT_PASSWORD") WHERE user='root';
+EOF
+
+if [[ $MYSQL_DATABASE != "" ]]; then
+    echo "CREATE DATABASE IF NOT EXISTS \`$MYSQL_DATABASE\` CHARACTER SET utf8 COLLATE utf8_general_ci;" >> $tfile
+
+    if [[ $MY_USER != "" ]]; then
+        echo "GRANT ALL ON \`$MYSQL_DATABASE\`.* to '$MY_USER'@'%' IDENTIFIED BY '$MY_PASSWORD';" >> $tfile
+    fi
+fi
+
+/usr/sbin/mysqld --bootstrap --verbose=0 < $tfile
+rm -f $tfile
+
+# Create a user
+echo "User: $MY_USER Pass: $MY_PASSWORD"
+useradd --create-home --shell /bin/bash --user-group --groups adm,sudo $MY_USER
+echo "$MY_USER:$MY_PASSWORD" | chpasswd
+
+# Run specific initial.sh
+if [[ -f "/home/$MY_USER/docker-specific-initial.sh" ]]; then
+  source "/home/$MY_USER/docker-specific-initial.sh"
+fi
+
+service apache2 restart
+service ssh restart
+exec /usr/sbin/mysqld
