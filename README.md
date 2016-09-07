@@ -2,7 +2,7 @@ Rich-mysql
 ============
 
 Example usage: 
-     `$ docker run --name rich-mysql -d -p 22:22 -p 80:80 -p 3306:3306 -v /home/kel:/home/kel -e ROOT_PASSWORD=pwd01 kentlin/docker-rich-mysql`
+     `$ docker run --name rich-mysql -d -p 32700:22 -p 80:80 -p 3306:3306 -v /home/kel:/home/kel -e ROOT_PASSWORD=pwd01 kentlin/rich-mysql`
 
 Environment variables
 ---------------------
